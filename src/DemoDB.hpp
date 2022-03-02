@@ -44,28 +44,34 @@ public:
 	
 	bool initDatabase(string filePath = "");
 
-	bool 		getValBool() {return _val_bool;};
-	void 		setValBool(bool val);
-	
-	int  		getValInt() {return _val_int;};
-	void 		setValInt(int val);
-		
-	string 	getValString() {return _val_str;};
-	void 		setValString(string val);
+ 
+	// MARK: - properties
+	bool saveProperties() ;
+	bool restoreProperties();
+ 
+	bool setProperty(string key, string value);
+	bool getProperty(string key, string *value);
+	bool setPropertyIfNone(string key, string value);
+
+	bool getUint16Property(string key, uint16_t * value);
+	bool getFloatProperty(string key, float * valOut);
+	bool getBoolProperty(string key, bool * valOut);
+
+	bool removeProperty(string key);
+	map<string ,string> getProperties();
 	
 private:
-	
+ 
+ 
+	bool 		_isSetup;
+
 	static DemoDB *sharedInstance;
  
 	sqlite3 	*_sdb;
-	mutable 	std::mutex _mutex;
-
-	
-	// values
-	bool 		_val_bool;
-	int  		_val_int;
-	string 	_val_str ;
-
+	mutable 	std::mutex 			_mutex;
+ 	map<string,string> 			_properties;
+ 
+	 
 };
 
 #endif /* DemoDB_hpp */
