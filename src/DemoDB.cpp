@@ -98,35 +98,33 @@ bool DemoDB::restoreProperties(){
 
 
 bool DemoDB::saveProperties() {
-	bool statusOk = false;
+	bool statusOk = true;
 	
 	if(_properties.size() == 0)
 		return true;
 	
-	
 	std::lock_guard<std::mutex> lock(_mutex);
 	
-	string sql = string("REPLACE INTO DEMO_DATA (NAME, VALUE) VALUES ");
- 
+	
 	for (auto& [name, value] : _properties) {
-		sql.append( "('" +  name  + "','" + value  + "' ),");
+		sqlite3_stmt* stmt = NULL;
+		sqlite3_prepare_v2(_sdb,
+								 "REPLACE INTO DEMO_DATA (NAME, VALUE) VALUES  (?,?);",
+								 -1,  &stmt, NULL);
+		
+		sqlite3_bind_text(stmt, 1, name.c_str(), -1, SQLITE_STATIC);
+		sqlite3_bind_text(stmt, 2, value.c_str(), -1, SQLITE_STATIC);
+		
+		if( sqlite3_step(stmt) != SQLITE_DONE){
+			LOGT_ERROR("saveProperties FAILED: %s", sqlite3_errmsg(_sdb) );
+			statusOk = false;
+		}
+		sqlite3_finalize(stmt);
+		
+		if(!statusOk)
+			break;
 	}
-	
-	// remove last comma and add semicolon
-	sql.pop_back();
-	sql.append(";");
-	
-	//	printf("%s\n", sql.c_str());
-	
-	char *zErrMsg = 0;
-	if(sqlite3_exec(_sdb,sql.c_str(),NULL, 0, &zErrMsg  ) != SQLITE_OK){
-		LOGT_ERROR("sqlite3_exec FAILED: %s\n\t%s", sql.c_str(), sqlite3_errmsg(_sdb	) );
-		sqlite3_free(zErrMsg);
-	}
-	else {
-		statusOk = true;
-	}
-	
+  
 	return statusOk;
 }
 
@@ -140,23 +138,24 @@ bool DemoDB::setProperty(string key, string value){
 
 bool DemoDB::removeProperty(string key){
 	
-	bool statusOk = false;
+	bool statusOk = true;
  
 	_properties.erase(key);
 	 
 	std::lock_guard<std::mutex> lock(_mutex);
  
-	string sql = string("DELETE FROM DEMO_DATA WHERE NAME = '")  + key +  "';";
-	 
-	char *zErrMsg = 0;
-	if(sqlite3_exec(_sdb,sql.c_str(),NULL, 0, &zErrMsg  ) != SQLITE_OK){
-		LOGT_ERROR("sqlite3_exec FAILED: %s\n\t%s", sql.c_str(), sqlite3_errmsg(_sdb	) );
-		sqlite3_free(zErrMsg);
-	}
-	else {
-		statusOk = true;
-	}
+	sqlite3_stmt* stmt = NULL;
+	sqlite3_prepare_v2(_sdb,
+							 "DELETE FROM DEMO_DATA WHERE NAME = ? ;",
+							 -1,  &stmt, NULL);
 	
+	sqlite3_bind_text(stmt, 1, key.c_str(), -1, SQLITE_STATIC);
+ 
+	if( sqlite3_step(stmt) != SQLITE_DONE){
+		LOGT_ERROR("removeProperty FAILED: %s", sqlite3_errmsg(_sdb) );
+		statusOk = false;
+	}
+	sqlite3_finalize(stmt);
 	
 	return statusOk;
 }
