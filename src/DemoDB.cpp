@@ -107,8 +107,7 @@ bool DemoDB::saveProperties() {
 	std::lock_guard<std::mutex> lock(_mutex);
 	
 	string sql = string("REPLACE INTO DEMO_DATA (NAME, VALUE) VALUES ");
-	
-	
+ 
 	for (auto& [name, value] : _properties) {
 		sql.append( "('" +  name  + "','" + value  + "' ),");
 	}
@@ -141,13 +140,27 @@ bool DemoDB::setProperty(string key, string value){
 
 bool DemoDB::removeProperty(string key){
 	
-	if(_properties.count(key)){
-		_properties.erase(key);
-		saveProperties();
-		return true;
+	bool statusOk = false;
+ 
+	_properties.erase(key);
+	 
+	std::lock_guard<std::mutex> lock(_mutex);
+ 
+	string sql = string("DELETE FROM DEMO_DATA WHERE NAME = '")  + key +  "';";
+	 
+	char *zErrMsg = 0;
+	if(sqlite3_exec(_sdb,sql.c_str(),NULL, 0, &zErrMsg  ) != SQLITE_OK){
+		LOGT_ERROR("sqlite3_exec FAILED: %s\n\t%s", sql.c_str(), sqlite3_errmsg(_sdb	) );
+		sqlite3_free(zErrMsg);
 	}
-	return false;
+	else {
+		statusOk = true;
+	}
+	
+	
+	return statusOk;
 }
+
 
 bool DemoDB::setPropertyIfNone(string key, string value){
 	
